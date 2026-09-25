@@ -684,7 +684,7 @@
     "@typescript-eslint/parser": "^7.0.0",
     "@vscode/test-electron": "^2.3.8",
     "@vscode/vsce": "^3.0.0",
-    "data-integration": "file:../../quick_tar_ball/data-integration-0.1.0.tgz",
+    "data-integration": "0.1.0",
     "esbuild": "^0.28.0",
     "eslint": "^8.56.0",
     "mocha": "^11.0.0",

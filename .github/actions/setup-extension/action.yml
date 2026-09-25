@@ -1,0 +1,19 @@
+name: Set up extension
+description: Install the extension dependencies from public npm on a clean runner.
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: vscode-extension/package-lock.json
+
+    - name: Install dependencies
+      shell: pwsh
+      working-directory: vscode-extension
+      env:
+        NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+      run: npm ci --ignore-scripts --no-audit --no-fund

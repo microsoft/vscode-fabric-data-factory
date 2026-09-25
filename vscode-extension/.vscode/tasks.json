@@ -28,6 +28,12 @@
           "endsPattern": "^\\[esbuild\\] Build"
         }
       }
+    },
+    {
+      "label": "copy-assets",
+      "type": "npm",
+      "script": "copy-assets",
+      "problemMatcher": []
     }
   ]
 }

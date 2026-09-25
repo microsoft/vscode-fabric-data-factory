@@ -10,19 +10,19 @@
  *   node scripts/package-vsix.mjs win32-x64 linux-x64   # build specific platforms
  *
  * Prerequisites:
- *   - Run `cargo xtask build` first to produce the .node addons in crates/addon/.
+ *   - Install a data-integration package containing the target native addons.
  */
 
-import { existsSync, mkdirSync, rmSync, copyFileSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
+import { createRequire } from "module";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const extRoot = join(__dirname, "..");
-const repoRoot = join(extRoot, "..");
-const addonDir = join(repoRoot, "crates", "addon");
-const assets = join(extRoot, "assets");
+const require = createRequire(import.meta.url);
+const addonDir = dirname(require.resolve("data-integration"));
 const outDir = join(extRoot, "vsix");
 
 /**
@@ -60,28 +60,12 @@ for (const platform of platformsToBuild) {
 
   const addonSrc = join(addonDir, addonFile);
   if (!existsSync(addonSrc)) {
-    console.warn(`⚠ Skipping ${platform} — addon not found: ${addonFile}`);
-    console.warn(`  Build it first: cargo xtask build --target <rust-triple>`);
+    if (requestedPlatforms.length > 0) {
+      throw new Error(`The installed SDK has no addon for the requested target ${platform}: ${addonFile}`);
+    }
+    console.warn(`⚠ Skipping ${platform} — addon not found in the installed SDK: ${addonFile}`);
     skipped++;
     continue;
-  }
-
-  // Clean assets/ and run copy-assets to populate with shared files,
-  // then drop in the platform-specific addon.
-  rmSync(assets, { recursive: true, force: true });
-  execSync("node scripts/copy-assets.mjs", { cwd: extRoot, stdio: "inherit" });
-
-  // Ensure only THIS platform's addon is in assets/
-  // (copy-assets copies whichever .node it finds first on the current machine,
-  //  but for cross-platform packaging we overwrite with the correct one)
-  for (const other of Object.values(PLATFORMS)) {
-    const f = join(assets, other);
-    if (existsSync(f) && other !== addonFile) {
-      rmSync(f);
-    }
-  }
-  if (!existsSync(join(assets, addonFile))) {
-    copyFileSync(addonSrc, join(assets, addonFile));
   }
 
   const vsixName = `fabric-data-factory-${platform}.vsix`;
@@ -99,9 +83,15 @@ for (const platform of platformsToBuild) {
         "--allow-missing-repository",
         "--no-dependencies",
         "--skip-license",
-        "--out", vsixPath,
+        "--out", JSON.stringify(vsixPath),
       ].join(" "),
-      { cwd: extRoot, input: "y\n", stdio: ["pipe", "pipe", "pipe"], encoding: "utf-8" },
+      {
+        cwd: extRoot,
+        env: { ...process.env, FABRIC_DATA_FACTORY_TARGET: platform },
+        input: "y\n",
+        stdio: ["pipe", "pipe", "pipe"],
+        encoding: "utf-8",
+      },
     );
     // Print stdout, filtering out the large-file warning
     const lines = result.split("\n").filter(
@@ -126,4 +116,7 @@ console.log(`\n${"═".repeat(50)}`);
 console.log(`Built: ${built}  Skipped: ${skipped}`);
 if (built > 0) {
   console.log(`VSIX files are in: ${outDir}/`);
+} else {
+  console.error("No VSIX was built. Install an SDK tarball containing a supported native addon.");
+  process.exitCode = 1;
 }

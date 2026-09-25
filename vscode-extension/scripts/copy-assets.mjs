@@ -1,18 +1,33 @@
 /**
- * Copy assets from the monorepo into the extension's assets/ folder.
+ * Copy assets from the installed SDK into the extension's assets/ folder.
  *
  * Run: node scripts/copy-assets.mjs
  */
 import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync, readFileSync, rmSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const extRoot = join(__dirname, "..");
-const repoRoot = join(extRoot, "..");
+const require = createRequire(import.meta.url);
+const addonDir = dirname(require.resolve("data-integration"));
+const sdkRoot = dirname(addonDir);
 const assets = join(extRoot, "assets");
-
-mkdirSync(assets, { recursive: true });
+const target = process.env.FABRIC_DATA_FACTORY_TARGET || `${process.platform}-${process.arch}`;
+const addonCandidates = [
+  "di-addon.win32-x64-msvc.node",
+  "di-addon.linux-x64-gnu.node",
+  "di-addon.linux-arm64-gnu.node",
+  "di-addon.darwin-x64.node",
+  "di-addon.darwin-arm64.node",
+];
+const addonFile = addonCandidates.find(
+  name => name === `di-addon.${target}.node` || name === `di-addon.${target}-msvc.node` || name === `di-addon.${target}-gnu.node`,
+);
+if (!addonFile || !existsSync(join(addonDir, addonFile))) {
+  throw new Error(`The installed data-integration package has no native addon for ${target}. Install a tarball built for this target.`);
+}
 
 // ── Helper: recursively copy a directory ──
 function copyDirSync(src, dest) {
@@ -47,28 +62,24 @@ function mirrorDirSync(src, dest) {
 mkdirSync(assets, { recursive: true });
 
 // ── index.d.ts → assets/data-integration.d.ts ──
-const dtsSource = join(repoRoot, "crates", "addon", "index.d.ts");
+const dtsSource = join(addonDir, "index.d.ts");
 copyFileSync(dtsSource, join(assets, "data-integration.d.ts"));
 console.log("✓ data-integration.d.ts");
 
 // ── SKILL.md → assets/SKILL.md ──
-const skillSource = join(repoRoot, "xtask", "assets", "SKILL.md");
-if (existsSync(skillSource)) {
-  copyFileSync(skillSource, join(assets, "SKILL.md"));
-  console.log("✓ SKILL.md");
-}
+const skillSource = join(sdkRoot, "SKILL.md");
+copyFileSync(skillSource, join(assets, "SKILL.md"));
+console.log("✓ SKILL.md");
 
 // ── references/ → assets/references/ ──
 // Per-client reference markdown loaded on-demand by the chat participant,
 // plus the `index.json` section catalog it slices them with.
-const referencesSource = join(repoRoot, "xtask", "assets", "references");
+const referencesSource = join(sdkRoot, "references");
 const referencesDest = join(assets, "references");
-if (existsSync(referencesSource)) {
-  mirrorDirSync(referencesSource, referencesDest);
-  const count = readdirSync(referencesSource).filter(f => f.endsWith(".md")).length;
-  console.log(`✓ references/ (${count} reference files → assets/references/)`);
-  verifyReferenceIndex(referencesDest);
-}
+verifyReferenceIndex(referencesSource);
+mirrorDirSync(referencesSource, referencesDest);
+const count = readdirSync(referencesSource).filter(f => f.endsWith(".md")).length;
+console.log(`✓ references/ (${count} reference files → assets/references/)`);
 
 /**
  * Verify the copied `index.json` still matches the markdown beside it.
@@ -90,7 +101,7 @@ function verifyReferenceIndex(dir) {
   if (!existsSync(indexPath)) {
     console.error(
       "✗ references/index.json is missing.\n" +
-      "   Generate it with: cargo xtask refs-index",
+      "   Regenerate it in the SDK source with cargo xtask refs-index, then rebuild and reinstall the SDK tarball.",
     );
     process.exit(1);
   }
@@ -101,7 +112,7 @@ function verifyReferenceIndex(dir) {
     console.error(
       "✗ references/index.json is stale — the markdown changed after it was generated.\n" +
       `   expected sourceHash ${actual}, found ${index.sourceHash}\n` +
-      "   Regenerate it with: cargo xtask refs-index",
+      "   Regenerate it in the SDK source with cargo xtask refs-index, then rebuild and reinstall the SDK tarball.",
     );
     process.exit(1);
   }
@@ -182,49 +193,18 @@ function verifyCorePrompt(corePath) {
 // ── Node loader (index.js) → assets/data-integration.js ──
 // This is the napi-rs generated loader that does platform detection
 // and require('./di-addon.<platform>.node').
-const loaderSource = join(repoRoot, "crates", "addon", "index.js");
+const loaderSource = join(addonDir, "index.js");
 copyFileSync(loaderSource, join(assets, "data-integration.js"));
 console.log("✓ data-integration.js");
 
 // ── Native addon (.node) ──
-// The addon file name is platform-specific. Find and copy the one
-// that matches the current build machine.
-const addonCandidates = [
-  "di-addon.win32-x64-msvc.node",
-  "di-addon.linux-x64-gnu.node",
-  "di-addon.linux-arm64-gnu.node",
-  "di-addon.darwin-x64.node",
-  "di-addon.darwin-arm64.node",
-];
-
-let addonCopied = false;
 for (const candidate of addonCandidates) {
-  const src = join(repoRoot, "crates", "addon", candidate);
-  if (existsSync(src)) {
-    const dest = join(assets, candidate);
-    try {
-      copyFileSync(src, dest);
-      console.log(`✓ ${candidate}`);
-    } catch (err) {
-      if (err.code === "EBUSY" && existsSync(dest)) {
-        console.log(
-          `✓ ${candidate} (skipped copy — file in use, existing copy kept)`,
-        );
-      } else {
-        throw err;
-      }
-    }
-    addonCopied = true;
-    break;
+  if (candidate !== addonFile) {
+    rmSync(join(assets, candidate), { force: true });
   }
 }
-
-if (!addonCopied) {
-  console.warn(
-    "⚠ No native addon found. Build the addon first:\n" +
-      "  cd crates/addon && npm run build",
-  );
-}
+copyFileSync(join(addonDir, addonFile), join(assets, addonFile));
+console.log(`✓ ${addonFile}`);
 
 // ── @types/node → assets/types_node/ ──
 // Bundled so the notebook language service has Node.js types

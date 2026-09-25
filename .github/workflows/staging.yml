@@ -1,5 +1,5 @@
 name: Extension Staging
-run-name: Extension staging build ${{ github.run_number }}
+run-name: "Extension staging build #${{ github.run_number }}"
 
 on:
   workflow_dispatch:
@@ -32,7 +32,9 @@ jobs:
         run: |
           $manifest = Get-Content package.json -Raw | ConvertFrom-Json
           $parts = $manifest.version.Split('.')
-          $version = "$($parts[0]).$($parts[1]).$env:BUILD_NUMBER"
+          $nextPatch = [int]$parts[2] + 1
+          $buildDate = (Get-Date).ToUniversalTime().ToString('yyyyMMdd')
+          $version = "$($parts[0]).$($parts[1]).$nextPatch-staging.$buildDate.$env:BUILD_NUMBER"
           npm version $version --no-git-tag-version --ignore-scripts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "version=$version" >> $env:GITHUB_OUTPUT

@@ -1,0 +1,50 @@
+name: Extension PR
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extension-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: linux-x64
+          - os: windows-2022
+            target: win32-x64
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: vscode-extension
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up extension
+        uses: ./.github/actions/setup-extension
+
+      - name: Prepare assets
+        run: npm run copy-assets
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Build and type-check
+        run: npm run build

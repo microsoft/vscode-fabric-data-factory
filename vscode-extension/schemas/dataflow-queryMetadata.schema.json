@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Fabric Dataflow Gen2 Query Metadata",
+  "description": "Schema for queryMetadata.json files used by Microsoft Fabric Dataflow Gen2 items.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version."
+    },
+    "queries": {
+      "type": "array",
+      "description": "List of queries in this dataflow.",
+      "items": {
+        "$ref": "#/definitions/Query"
+      }
+    },
+    "settings": {
+      "type": "object",
+      "description": "Global dataflow settings.",
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "Query": {
+      "type": "object",
+      "required": ["queryId", "queryName"],
+      "properties": {
+        "queryId": {
+          "type": "string",
+          "description": "Unique identifier for the query."
+        },
+        "queryName": {
+          "type": "string",
+          "description": "Display name of the query."
+        },
+        "queryGroupId": {
+          "type": "string",
+          "description": "Group this query belongs to."
+        },
+        "loadEnabled": {
+          "type": "boolean",
+          "description": "Whether this query loads data to the destination."
+        },
+        "destination": {
+          "$ref": "#/definitions/Destination",
+          "description": "Output destination configuration."
+        },
+        "referenceQuery": {
+          "type": "boolean",
+          "description": "Whether this is a helper/reference query."
+        }
+      }
+    },
+    "Destination": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Destination type (e.g. Lakehouse, Warehouse)."
+        },
+        "artifactId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        },
+        "tableName": {
+          "type": "string"
+        },
+        "updateMethod": {
+          "type": "string",
+          "enum": ["Replace", "Append"],
+          "description": "How data is written to the destination."
+        }
+      }
+    }
+  }
+}

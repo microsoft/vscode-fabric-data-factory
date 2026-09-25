@@ -1,0 +1,537 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Fabric Copy Job Definition",
+  "description": "Schema for copyjob-content.json files used by Microsoft Fabric Copy Jobs.",
+  "type": "object",
+  "required": ["properties"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Copy job name."
+    },
+    "properties": {
+      "$ref": "#/definitions/CopyJobProperties"
+    },
+    "activities": {
+      "type": "array",
+      "description": "Individual copy activities within this job.",
+      "items": { "$ref": "#/definitions/CopyJobActivity" }
+    },
+    "lastModifiedByObjectId": {
+      "type": "string",
+      "description": "Object ID of the last modifier."
+    }
+  },
+  "definitions": {
+    "CopyJobProperties": {
+      "type": "object",
+      "required": ["jobMode", "source", "destination"],
+      "description": "Top-level copy job configuration.",
+      "properties": {
+        "jobMode": {
+          "type": "string",
+          "description": "Copy job execution mode.",
+          "enum": ["Batch", "CDC", "Incremental"]
+        },
+        "source": {
+          "$ref": "#/definitions/CopyJobConnection",
+          "description": "Source connection."
+        },
+        "destination": {
+          "$ref": "#/definitions/CopyJobConnection",
+          "description": "Destination connection."
+        },
+        "policy": {
+          "$ref": "#/definitions/CopyJobPolicy"
+        },
+        "activityBatchCount": {
+          "type": "integer",
+          "description": "Number of activities to run in parallel.",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "fullLoadBehavior": {
+          "type": "string",
+          "description": "Behavior on the initial full load.",
+          "enum": ["None", "Truncate"]
+        },
+        "stagingSettings": {
+          "$ref": "#/definitions/CopyJobStagingSettings"
+        },
+        "defaultActivityProperties": {
+          "$ref": "#/definitions/CopyJobActivityProperties",
+          "description": "Default properties applied to all activities."
+        },
+        "dataFactoryId": {
+          "type": "string",
+          "description": "Associated data factory ID."
+        }
+      }
+    },
+    "CopyJobConnection": {
+      "type": "object",
+      "required": ["type"],
+      "description": "Source or destination connection configuration.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Connector type (e.g. AzureSqlTable, LakehouseTable, DelimitedText, AzureBlobStorage)."
+        },
+        "connectionSettings": {
+          "$ref": "#/definitions/CopyJobConnectionSettings"
+        },
+        "genericChangeDataProperties": {
+          "type": "object",
+          "description": "Change data capture properties (CDC/Incremental mode).",
+          "properties": {
+            "rowMarkerColumn": { "type": "string" },
+            "rowOrderColumn": { "type": "string" },
+            "initialFolderName": { "type": "string" },
+            "deltaFolderName": { "type": "string" },
+            "rowMarkerValues": { "type": "object" }
+          }
+        },
+        "additionalSettings": {
+          "type": "object",
+          "description": "Additional connector-specific settings.",
+          "properties": {
+            "storageIntegration": { "type": "string" },
+            "stageDatabase": { "type": "string" },
+            "stageSchema": { "type": "string" },
+            "cdcSourceFileFormat": { "type": "string" },
+            "protocolSettings": { "$ref": "#/definitions/HttpProtocolSettings" }
+          },
+          "additionalProperties": true
+        },
+        "readTableAsFile": {
+          "type": "boolean",
+          "description": "Read table as file."
+        }
+      }
+    },
+    "CopyJobConnectionSettings": {
+      "type": "object",
+      "description": "Connection settings for a source or destination.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Connection type (e.g. AzureSqlDatabase, AzureBlobStorage, SqlServer)."
+        },
+        "typeProperties": {
+          "type": "object",
+          "description": "Type-specific connection properties.",
+          "properties": {
+            "schema": { "type": "string" },
+            "database": { "type": "string" },
+            "dataset": { "type": "string", "description": "BigQuery dataset." },
+            "collection": { "type": "string" },
+            "container": { "type": "string", "description": "CosmosDB container." },
+            "workspaceId": { "type": "string" },
+            "artifactId": { "type": "string" },
+            "rootFolder": { "type": "string" },
+            "endPoint": { "type": "string" },
+            "containerUri": { "type": "string", "description": "Public dataset container URI." },
+            "catalog": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "connectionProperties": {
+          "type": "object",
+          "description": "Additional connector-specific connection properties.",
+          "additionalProperties": true
+        },
+        "externalReferences": {
+          "$ref": "#/definitions/ExternalReferences"
+        }
+      }
+    },
+    "ExternalReferences": {
+      "type": "object",
+      "description": "External artifact references (connections, etc.).",
+      "properties": {
+        "connection": {
+          "description": "Connection artifact reference (ID or object)."
+        }
+      },
+      "additionalProperties": true
+    },
+    "CopyJobPolicy": {
+      "type": "object",
+      "description": "Retry and timeout policy.",
+      "properties": {
+        "timeout": {
+          "type": "string",
+          "description": "Timeout in TimeSpan format (e.g. 0.12:00:00)."
+        },
+        "retry": {
+          "type": "integer",
+          "description": "Max retry attempts.",
+          "minimum": 0
+        },
+        "retryIntervalInSeconds": {
+          "type": "integer",
+          "description": "Interval between retries in seconds.",
+          "minimum": 0
+        }
+      }
+    },
+    "CopyJobStagingSettings": {
+      "type": "object",
+      "description": "Staging storage configuration.",
+      "properties": {
+        "path": { "type": "string", "description": "Staging path." },
+        "externalReferences": { "$ref": "#/definitions/ExternalReferences" }
+      }
+    },
+    "CopyJobActivity": {
+      "type": "object",
+      "description": "An individual copy activity within the job.",
+      "required": ["id", "properties"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique activity ID within the job."
+        },
+        "properties": {
+          "$ref": "#/definitions/CopyJobActivityProperties"
+        }
+      }
+    },
+    "CopyJobActivityProperties": {
+      "type": "object",
+      "description": "Properties for a single copy activity.",
+      "properties": {
+        "source": {
+          "$ref": "#/definitions/CopyJobActivitySource"
+        },
+        "destination": {
+          "$ref": "#/definitions/CopyJobActivityDestination"
+        },
+        "enableStaging": {
+          "type": "boolean",
+          "description": "Whether to copy via interim staging."
+        },
+        "dataIntegrationUnits": {
+          "type": "integer",
+          "description": "Data integration units."
+        },
+        "validateDataConsistency": {
+          "type": "boolean",
+          "description": "Whether to validate data consistency."
+        },
+        "preserve": {
+          "type": "array",
+          "description": "Preserve rules.",
+          "items": { "type": "string" }
+        },
+        "translator": {
+          "$ref": "#/definitions/Translator"
+        },
+        "typeConversionSettings": {
+          "$ref": "#/definitions/TypeConversionSettings"
+        },
+        "auditColumns": {
+          "type": "array",
+          "description": "Audit columns to append.",
+          "items": { "$ref": "#/definitions/AuditColumn" }
+        },
+        "columnFlattenSettings": {
+          "type": "object",
+          "description": "Column flatten settings.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "CopyJobActivitySource": {
+      "type": "object",
+      "description": "Source settings for a copy activity.",
+      "properties": {
+        "datasetSettings": {
+          "$ref": "#/definitions/DatasetSettings"
+        },
+        "changeDataSettings": {
+          "$ref": "#/definitions/ChangeDataSettings"
+        },
+        "storeSettings": {
+          "$ref": "#/definitions/StoreSettings"
+        },
+        "formatSettings": {
+          "$ref": "#/definitions/FormatSettings"
+        },
+        "partitionSettings": {
+          "type": "object",
+          "description": "Partition settings.",
+          "properties": {
+            "partitionOption": {
+              "type": "string",
+              "enum": ["None", "Auto"]
+            }
+          }
+        },
+        "protocolSettings": { "$ref": "#/definitions/HttpProtocolSettings" },
+        "exportSettings": {
+          "type": "object",
+          "properties": { "type": { "type": "string" } }
+        },
+        "noTruncation": { "type": "boolean" },
+        "readBatchSize": { "type": "integer" },
+        "readTimeout": { "type": "string", "description": "TimeSpan format." },
+        "pageSize": { "type": "integer", "description": "CosmosDB page size." },
+        "detectDatetime": { "type": "boolean", "description": "CosmosDB: detect datetime." },
+        "versionAsOf": { "type": "string", "description": "Lakehouse time-travel version." }
+      }
+    },
+    "CopyJobActivityDestination": {
+      "type": "object",
+      "description": "Destination settings for a copy activity.",
+      "properties": {
+        "datasetSettings": {
+          "$ref": "#/definitions/DatasetSettings"
+        },
+        "tableOption": {
+          "type": "string",
+          "description": "Table option (e.g. autoCreate)."
+        },
+        "tableActionOption": {
+          "type": "string",
+          "description": "Table action option (e.g. insert)."
+        },
+        "writeBehavior": {
+          "type": "string",
+          "description": "Write behavior (e.g. insert, upsert)."
+        },
+        "upsertSettings": {
+          "type": "object",
+          "description": "Upsert settings (when writeBehavior is upsert).",
+          "properties": {
+            "upsertBehavior": { "type": "string", "description": "Merge or Replace." },
+            "useTempDB": { "type": "boolean" },
+            "interimSchemaName": { "type": "string" },
+            "keys": {
+              "type": "array",
+              "description": "Key columns for upsert row identification.",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "partitionOption": { "type": "string" },
+        "partitionNameList": {},
+        "writeBatchTimeout": { "type": "string", "description": "TimeSpan format." },
+        "writeBatchSize": { "type": "integer" },
+        "maxRowsPerFile": { "type": "integer" },
+        "ignoreNullValues": { "type": "boolean" },
+        "importSettings": {
+          "type": "object",
+          "properties": { "type": { "type": "string" } }
+        },
+        "storeSettings": { "$ref": "#/definitions/StoreSettings" },
+        "formatSettings": { "$ref": "#/definitions/FormatSettings" },
+        "protocolSettings": { "$ref": "#/definitions/HttpProtocolSettings" },
+        "applyVOrder": { "type": "boolean", "description": "Apply V-Order optimization." }
+      }
+    },
+    "DatasetSettings": {
+      "type": "object",
+      "description": "Dataset settings identifying the data to copy.",
+      "properties": {
+        "schema": { "type": "string" },
+        "table": { "type": "string" },
+        "database": { "type": "string" },
+        "dataset": { "type": "string", "description": "BigQuery dataset." },
+        "collection": { "type": "string" },
+        "container": { "type": "string", "description": "CosmosDB container." },
+        "sheetIndex": { "type": "integer", "description": "Excel sheet index." },
+        "sheetName": { "type": "string", "description": "Excel sheet name." },
+        "cellRange": { "type": "string", "description": "Excel cell range." },
+        "keyspace": { "type": "string", "description": "Cassandra keyspace." },
+        "path": { "type": "string", "description": "OData or DynamicsAX path." },
+        "relativeUrl": { "type": "string", "description": "REST relative URL." },
+        "entityName": { "type": "string" },
+        "index": { "type": "string", "description": "Azure AI Search index." },
+        "list": { "type": "string", "description": "SharePoint list." },
+        "openHubDestinationName": { "type": "string", "description": "SAP Open Hub destination." },
+        "location": {
+          "$ref": "#/definitions/DatasetLocation"
+        },
+        "compression": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "level": { "type": "string" }
+          }
+        },
+        "columnDelimiter": { "type": "string" },
+        "rowDelimiter": { "type": "string" },
+        "escapeChar": { "type": "string" },
+        "firstRowAsHeader": { "type": "boolean" },
+        "quoteChar": { "type": "string" },
+        "encodingName": { "type": "string" },
+        "compressionCodec": { "type": "string" },
+        "compressionLevel": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "DatasetLocation": {
+      "type": "object",
+      "description": "File/folder location in storage.",
+      "properties": {
+        "type": { "type": "string", "description": "Location type (e.g. AzureBlobStorageLocation)." },
+        "fileName": { "type": "string" },
+        "folderPath": { "type": "string" },
+        "container": { "type": "string" },
+        "fileSystem": { "type": "string" },
+        "bucketName": { "type": "string" },
+        "relativeUrl": { "type": "string" }
+      }
+    },
+    "ChangeDataSettings": {
+      "type": "object",
+      "description": "Change data capture settings (CDC/Incremental mode).",
+      "properties": {
+        "readMethod": {
+          "type": "string",
+          "description": "CDC read method (e.g. SnapshotPlusIncremental, NativeCdc)."
+        },
+        "columns": {
+          "type": "array",
+          "description": "Change data tracking columns.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "ordinal": { "type": "integer" },
+              "type": { "type": "string" },
+              "physicalType": { "type": "string" },
+              "length": { "type": "string" },
+              "scale": { "type": "integer" },
+              "precision": { "type": "integer" },
+              "unit": { "type": "string" },
+              "conversionSettings": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string" },
+                  "format": { "type": "string" }
+                }
+              },
+              "delayedExtractionLatency": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "StoreSettings": {
+      "type": "object",
+      "description": "Store read/write settings.",
+      "properties": {
+        "type": { "type": "string" },
+        "recursive": { "type": "boolean" },
+        "prefix": { "type": "string" },
+        "fileFilter": { "type": "string" },
+        "wildcardFolderPath": { "type": "string" },
+        "wildcardFileName": { "type": "string" },
+        "fileListPath": { "type": "string" },
+        "modifiedDatetimeStart": { "type": "string" },
+        "modifiedDatetimeEnd": { "type": "string" },
+        "enablePartitionDiscovery": { "type": "boolean" },
+        "copyBehavior": { "type": "string" },
+        "blockSizeInMb": { "type": "integer" },
+        "useTempFileRename": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "FormatSettings": {
+      "type": "object",
+      "description": "Format read/write settings.",
+      "properties": {
+        "type": { "type": "string" },
+        "fileExtension": { "type": "string" },
+        "filePattern": { "type": "string" },
+        "quoteAllText": { "type": "boolean" },
+        "enableVertiParquet": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "HttpProtocolSettings": {
+      "type": "object",
+      "description": "HTTP protocol settings (REST connectors).",
+      "properties": {
+        "requestMethod": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH"] },
+        "requestTimeout": { "type": "string" },
+        "requestInterval": { "type": "string" },
+        "requestBody": { "type": "string" },
+        "additionalHeaders": { "type": "object", "additionalProperties": { "type": "string" } },
+        "paginationRules": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "Translator": {
+      "type": "object",
+      "description": "Column mapping / data type translator.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["TabularTranslator"]
+        },
+        "mappings": {
+          "type": "array",
+          "description": "Column mappings.",
+          "items": { "$ref": "#/definitions/ColumnMapping" }
+        }
+      }
+    },
+    "ColumnMapping": {
+      "type": "object",
+      "description": "Source-to-destination column mapping.",
+      "properties": {
+        "source": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "ordinal": { "type": "integer" },
+            "type": { "type": "string" },
+            "physicalType": { "type": "string" },
+            "length": { "type": "string" },
+            "scale": { "type": "integer" },
+            "precision": { "type": "integer" },
+            "unit": { "type": "string" }
+          }
+        },
+        "destination": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "ordinal": { "type": "integer" },
+            "type": { "type": "string" },
+            "physicalType": { "type": "string" },
+            "length": { "type": "string" },
+            "scale": { "type": "integer" },
+            "precision": { "type": "integer" },
+            "unit": { "type": "string" },
+            "isNullable": { "type": "boolean", "default": true },
+            "parquetProperties": { "type": "object" }
+          }
+        }
+      }
+    },
+    "TypeConversionSettings": {
+      "type": "object",
+      "description": "Type conversion settings for the translator.",
+      "properties": {
+        "typeConversion": {
+          "type": "object",
+          "properties": {
+            "allowDataTruncation": { "type": "boolean" },
+            "treatBooleanAsNumber": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "AuditColumn": {
+      "type": "object",
+      "description": "An audit column appended to the output.",
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" }
+      }
+    }
+  }
+}

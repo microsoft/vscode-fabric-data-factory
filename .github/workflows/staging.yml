@@ -1,0 +1,79 @@
+name: Extension Staging
+run-name: Extension staging build ${{ github.run_number }}
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package Windows, Linux, and macOS x64
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: vscode-extension
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up extension
+        uses: ./.github/actions/setup-extension
+
+      - name: Stamp staging version
+        id: version
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          $manifest = Get-Content package.json -Raw | ConvertFrom-Json
+          $parts = $manifest.version.Split('.')
+          $version = "$($parts[0]).$($parts[1]).$env:BUILD_NUMBER"
+          npm version $version --no-git-tag-version --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Package supported x64 targets
+        run: npm run package -- win32-x64 linux-x64 darwin-x64
+
+      - name: Name staging artifacts
+        env:
+          VSIX_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $files = @(Get-ChildItem -LiteralPath vsix -Filter '*.vsix' -File)
+          if ($files.Count -eq 0) { throw "Packaging produced no VSIX files." }
+          foreach ($file in $files) {
+            Rename-Item -LiteralPath $file.FullName `
+              -NewName "$($file.BaseName)-$env:VSIX_VERSION.vsix"
+          }
+
+      - name: Upload Windows x64 VSIX
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fabric-data-factory-win32-x64-${{ steps.version.outputs.version }}
+          path: vscode-extension/vsix/fabric-data-factory-win32-x64-${{ steps.version.outputs.version }}.vsix
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload Linux x64 VSIX
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fabric-data-factory-linux-x64-${{ steps.version.outputs.version }}
+          path: vscode-extension/vsix/fabric-data-factory-linux-x64-${{ steps.version.outputs.version }}.vsix
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload macOS x64 VSIX
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fabric-data-factory-darwin-x64-${{ steps.version.outputs.version }}
+          path: vscode-extension/vsix/fabric-data-factory-darwin-x64-${{ steps.version.outputs.version }}.vsix
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

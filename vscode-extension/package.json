@@ -1,0 +1,698 @@
+{
+  "name": "fabric-data-factory",
+  "displayName": "Fabric Data Factory",
+  "description": "Browse, edit, and manage Microsoft Fabric Data Factory items (Pipelines, dbt Jobs, Airflow Jobs, Copy Jobs, Dataflows) from VS Code.",
+  "version": "0.1.0",
+  "publisher": "microsoft",
+  "license": "MIT",
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/vscode-fabric-data-factory"
+  },
+  "engines": {
+    "vscode": "^1.116.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "fabric",
+    "data-factory",
+    "pipeline",
+    "dbt",
+    "airflow"
+  ],
+  "activationEvents": [
+    "onView:fabricDataFactory",
+    "onUri"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "walkthroughs": [
+      {
+        "id": "fabricDataFactorySetup",
+        "title": "Set up Fabric Data Factory",
+        "description": "Connect VS Code to Microsoft Fabric by installing the Azure CLI and signing in.",
+        "steps": [
+          {
+            "id": "installAz",
+            "title": "Install the Azure CLI",
+            "description": "Fabric Data Factory authenticates through the Azure CLI (`az`). Install it, then **restart VS Code** so it inherits your updated PATH.\n[Install Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)",
+            "media": {
+              "markdown": "media/walkthrough/install-az.md"
+            }
+          },
+          {
+            "id": "signIn",
+            "title": "Sign in with az login",
+            "description": "Open a terminal and run `az login`, then choose the account and tenant for your Fabric workspace.",
+            "media": {
+              "markdown": "media/walkthrough/sign-in.md"
+            }
+          },
+          {
+            "id": "verify",
+            "title": "Verify your setup",
+            "description": "Run the Setup Doctor to confirm `az` is found, you're signed in, and a Fabric token can be acquired.\n[Run Setup Doctor](command:fabricDataFactory.runSetupDoctor)",
+            "media": {
+              "markdown": "media/walkthrough/verify.md"
+            },
+            "completionEvents": [
+              "onCommand:fabricDataFactory.runSetupDoctor"
+            ]
+          }
+        ]
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "fabricDataFactory.di",
+        "fullName": "Data Integration",
+        "name": "di",
+        "description": "Generate and run scripts to interact with Fabric workspaces, Airflow DAGs, and Lakehouse tables.",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "continue",
+            "description": "Resume the previous agent loop after the step limit was reached"
+          },
+          {
+            "name": "reset",
+            "description": "Reset the sandbox and clear all variables"
+          },
+          {
+            "name": "reportError",
+            "description": "Summarise errors from this chat and draft a bug report"
+          }
+        ]
+      }
+    ],
+    "notebooks": [
+      {
+        "type": "fabric-notebook",
+        "displayName": "Fabric Notebook",
+        "selector": [
+          {
+            "filenamePattern": "*.fabricnb"
+          }
+        ]
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "fabricDataFactory",
+          "title": "Fabric Data Factory",
+          "icon": "resources/svgs/data_factory_48_filled.svg"
+        }
+      ]
+    },
+    "views": {
+      "fabricDataFactory": [
+        {
+          "id": "fabricDataFactory",
+          "name": "Workspaces",
+          "icon": "resources/svgs/data_factory_48_filled.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "fabricDataFactory",
+        "contents": "Setup isn't complete — Fabric Data Factory couldn't start its native codes, so its commands are unavailable.\n[Open Setup Walkthrough](command:fabricDataFactory.openSetupWalkthrough)\n\nRequires Azure CLI. Install it and run `az login`, then restart VS Code so the extension host picks up your updated PATH.",
+        "when": "fabricDataFactory.setupFailed"
+      },
+      {
+        "view": "fabricDataFactory",
+        "contents": "No folder opened.\n[Open Folder](command:vscode.openFolder)\n\nOpen a folder to sync Fabric item definitions, then select a workspace.\n[Select Workspaces](command:fabricDataFactory.selectWorkspaces)\n\nRequires Azure CLI. Run `az login` first.",
+        "when": "!fabricDataFactory.hasWorkspace && workspaceFolderCount == 0 && !fabricDataFactory.setupFailed"
+      },
+      {
+        "view": "fabricDataFactory",
+        "contents": "No workspace selected.\n[Select Workspaces](command:fabricDataFactory.selectWorkspaces)\n\nRequires Azure CLI. Run `az login` first.",
+        "when": "!fabricDataFactory.hasWorkspace && workspaceFolderCount != 0 && !fabricDataFactory.setupFailed"
+      }
+    ],
+    "commands": [
+      {
+        "command": "fabricDataFactory.pullAll",
+        "title": "Pull All",
+        "category": "Fabric",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "fabricDataFactory.revealActiveFile",
+        "title": "Reveal Active File in Workspaces View",
+        "category": "Fabric",
+        "icon": "$(target)"
+      },
+      {
+        "command": "fabricDataFactory.selectWorkspaces",
+        "title": "Select Workspaces",
+        "category": "Fabric",
+        "icon": "$(cloud)"
+      },
+      {
+        "command": "fabricDataFactory.pushItem",
+        "title": "Push Item",
+        "category": "Fabric",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "fabricDataFactory.pushWorkspace",
+        "title": "Push All Items in Workspace",
+        "category": "Fabric",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "fabricDataFactory.pushTypeGroup",
+        "title": "Push All Items in Category",
+        "category": "Fabric",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "fabricDataFactory.pullItem",
+        "title": "Pull Item",
+        "category": "Fabric",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "fabricDataFactory.commitItemToGit",
+        "title": "Commit to Git",
+        "category": "Fabric",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "fabricDataFactory.commitWorkspaceToGit",
+        "title": "Commit All to Git",
+        "category": "Fabric",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "fabricDataFactory.openItem",
+        "title": "Open in Local Notebook",
+        "category": "Fabric",
+        "icon": "$(notebook)"
+      },
+      {
+        "command": "fabricDataFactory.openInPortal",
+        "title": "Open in Fabric Portal",
+        "category": "Fabric",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "fabricDataFactory.copyItemReference",
+        "title": "Copy Reference for Chat",
+        "category": "Fabric",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "fabricDataFactory.setAirflowActive",
+        "title": "Set as Active Airflow Item",
+        "category": "Fabric",
+        "icon": "$(check)"
+      },
+      {
+        "command": "fabricDataFactory.setDefaultDbtItemConfig",
+        "title": "Set Default dbt Config",
+        "category": "Fabric",
+        "icon": "$(check)"
+      },
+      {
+        "command": "fabricDataFactory.createItem",
+        "title": "Create Item\u2026",
+        "category": "Fabric",
+        "icon": "$(add)"
+      },
+      {
+        "command": "fabricDataFactory.gitPullWorkspace",
+        "title": "Git Pull (Force Sync)",
+        "category": "Fabric",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "fabricDataFactory.deleteItem",
+        "title": "Delete Item",
+        "category": "Fabric",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "fabricDataFactory.expandAll",
+        "title": "Expand All",
+        "category": "Fabric",
+        "icon": "$(expand-all)"
+      },
+      {
+        "command": "fabricDataFactory.restartKernel",
+        "title": "Restart Kernel",
+        "category": "Fabric",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "fabricDataFactory.airflow.start",
+        "title": "Start Airflow Server",
+        "category": "Fabric",
+        "icon": "$(play)"
+      },
+      {
+        "command": "fabricDataFactory.airflow.stop",
+        "title": "Stop Airflow Server",
+        "category": "Fabric",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "fabricDataFactory.airflow.restart",
+        "title": "Restart Airflow Server",
+        "category": "Fabric",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "fabricDataFactory.airflow.openUI",
+        "title": "Open Airflow Web UI",
+        "category": "Fabric",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "fabricDataFactory.airflow.showLogs",
+        "title": "Show Airflow Logs",
+        "category": "Fabric",
+        "icon": "$(output)"
+      },
+      {
+        "command": "fabricDataFactory.airflow.runItem",
+        "title": "Run in Local Airflow",
+        "category": "Fabric",
+        "icon": "$(play)"
+      },
+      {
+        "command": "fabricDataFactory.di.editScript",
+        "title": "Edit Generated Script",
+        "category": "Fabric"
+      },
+      {
+        "command": "fabricDataFactory.di.rerun",
+        "title": "Re-run Script",
+        "category": "Fabric"
+      },
+      {
+        "command": "fabricDataFactory.di.runScript",
+        "title": "Run Script in Sandbox",
+        "category": "Fabric",
+        "icon": "$(play)"
+      },
+      {
+        "command": "fabricDataFactory.di.resetSandbox",
+        "title": "Reset DI Chat Sandbox",
+        "category": "Fabric",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "fabricDataFactory.exportDiagnosticPackage",
+        "title": "Export Diagnostic Package (.dipkg)",
+        "category": "Fabric",
+        "icon": "$(package)"
+      },
+      {
+        "command": "fabricDataFactory.runSetupDoctor",
+        "title": "Run Setup Doctor",
+        "category": "Fabric",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "fabricDataFactory.openSetupWalkthrough",
+        "title": "Open Setup Walkthrough",
+        "category": "Fabric",
+        "icon": "$(compass)"
+      },
+      {
+        "command": "fabricDataFactory.fs.newFile",
+        "title": "New File\u2026",
+        "category": "Fabric",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "fabricDataFactory.fs.newFolder",
+        "title": "New Folder\u2026",
+        "category": "Fabric",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "fabricDataFactory.fs.rename",
+        "title": "Rename\u2026",
+        "category": "Fabric"
+      },
+      {
+        "command": "fabricDataFactory.fs.delete",
+        "title": "Delete Permanently",
+        "category": "Fabric",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "fabricDataFactory.fs.copy",
+        "title": "Copy",
+        "category": "Fabric"
+      },
+      {
+        "command": "fabricDataFactory.fs.paste",
+        "title": "Paste",
+        "category": "Fabric"
+      },
+      {
+        "command": "fabricDataFactory.fs.copyPath",
+        "title": "Copy Path",
+        "category": "Fabric"
+      },
+      {
+        "command": "fabricDataFactory.fs.copyRelativePath",
+        "title": "Copy Relative Path",
+        "category": "Fabric"
+      },
+      {
+        "command": "fabricDataFactory.fs.pushSelectedFiles",
+        "title": "Push Selected Files",
+        "category": "Fabric",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "fabricDataFactory.fs.compareWithGit",
+        "title": "Compare with Git",
+        "category": "Fabric",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "fabricDataFactory.fs.revealInExplorer",
+        "title": "Reveal in Explorer View",
+        "category": "Fabric"
+      },
+      {
+        "command": "fabricDataFactory.fs.revealInOS",
+        "title": "Reveal in File Explorer",
+        "category": "Fabric"
+      },
+      {
+        "command": "fabricDataFactory.fs.openInTerminal",
+        "title": "Open in Integrated Terminal",
+        "category": "Fabric"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "fabricDataFactory.expandAll",
+          "when": "view == fabricDataFactory && !fabricDataFactory.setupFailed",
+          "group": "navigation@3"
+        },
+        {
+          "command": "fabricDataFactory.pullAll",
+          "when": "view == fabricDataFactory && !fabricDataFactory.setupFailed",
+          "group": "navigation@1"
+        },
+        {
+          "command": "fabricDataFactory.revealActiveFile",
+          "when": "view == fabricDataFactory && !fabricDataFactory.setupFailed",
+          "group": "navigation@2"
+        },
+        {
+          "command": "fabricDataFactory.selectWorkspaces",
+          "when": "view == fabricDataFactory && !fabricDataFactory.setupFailed"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "fabricDataFactory.createItem",
+          "when": "view == fabricDataFactory && viewItem =~ /^workspace(\\.git)?$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "fabricDataFactory.gitPullWorkspace",
+          "when": "view == fabricDataFactory && viewItem == workspace.git",
+          "group": "inline@1"
+        },
+        {
+          "command": "fabricDataFactory.pushWorkspace",
+          "when": "view == fabricDataFactory && viewItem =~ /^workspace(\\.git)?$/",
+          "group": "2_sync@1"
+        },
+        {
+          "command": "fabricDataFactory.commitWorkspaceToGit",
+          "when": "view == fabricDataFactory && viewItem == workspace.git",
+          "group": "2_sync@2"
+        },
+        {
+          "command": "fabricDataFactory.pushTypeGroup",
+          "when": "view == fabricDataFactory && viewItem == typeGroup",
+          "group": "2_sync@1"
+        },
+        {
+          "command": "fabricDataFactory.pushItem",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\.(default|dbt|airflow|airflow\\.running)(\\.(added|modified|deleted|conflict))?$/",
+          "group": "2_sync@1"
+        },
+        {
+          "command": "fabricDataFactory.pullItem",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\.(default|dbt|airflow|airflow\\.running)(\\.(added|modified|deleted|conflict))?$/",
+          "group": "2_sync@2"
+        },
+        {
+          "command": "fabricDataFactory.commitItemToGit",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\..*\\.(added|modified|deleted|conflict)$/",
+          "group": "2_sync@3"
+        },
+        {
+          "command": "fabricDataFactory.openItem",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\./",
+          "group": "1_open@0"
+        },
+        {
+          "command": "fabricDataFactory.openInPortal",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\.(default|dbt|lakehouse|warehouse|airflow)(\\.(added|modified|deleted|conflict))?$/",
+          "group": "1_open@1"
+        },
+        {
+          "command": "fabricDataFactory.copyItemReference",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\.|^typeGroup$|^workspace(\\.git)?$/",
+          "group": "9_cutcopypaste"
+        },
+        {
+          "command": "fabricDataFactory.setAirflowActive",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\.airflow/",
+          "group": "3_airflow@1"
+        },
+        {
+          "command": "fabricDataFactory.setDefaultDbtItemConfig",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\.dbt(\\.(added|modified|deleted|conflict))?$/",
+          "group": "4_dbt@1"
+        },
+        {
+          "command": "fabricDataFactory.deleteItem",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\./",
+          "group": "9_delete@1"
+        },
+        {
+          "command": "fabricDataFactory.airflow.runItem",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\.airflow(\\.(added|modified|deleted|conflict))?$/",
+          "group": "3_airflow@2"
+        },
+        {
+          "command": "fabricDataFactory.airflow.stop",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\.airflow\\.running(\\.(added|modified|deleted|conflict))?$/",
+          "group": "3_airflow@2"
+        },
+        {
+          "command": "fabricDataFactory.airflow.openUI",
+          "when": "view == fabricDataFactory && viewItem =~ /^item\\.airflow\\.running(\\.(added|modified|deleted|conflict))?$/",
+          "group": "3_airflow@3"
+        },
+        {
+          "command": "fabricDataFactory.fs.newFile",
+          "when": "view == fabricDataFactory && viewItem == fileNode.dir",
+          "group": "1_new@1"
+        },
+        {
+          "command": "fabricDataFactory.fs.newFolder",
+          "when": "view == fabricDataFactory && viewItem == fileNode.dir",
+          "group": "1_new@2"
+        },
+        {
+          "command": "fabricDataFactory.fs.pushSelectedFiles",
+          "when": "view == fabricDataFactory && viewItem =~ /^fileNode\\./",
+          "group": "2_push@1"
+        },
+        {
+          "command": "fabricDataFactory.fs.copy",
+          "when": "view == fabricDataFactory && viewItem =~ /^fileNode\\./",
+          "group": "5_cutcopypaste@1"
+        },
+        {
+          "command": "fabricDataFactory.fs.paste",
+          "when": "view == fabricDataFactory && fabricDataFactory.fsClipboardFull && viewItem == fileNode.dir",
+          "group": "5_cutcopypaste@2"
+        },
+        {
+          "command": "fabricDataFactory.fs.copyPath",
+          "when": "view == fabricDataFactory && viewItem =~ /^fileNode\\./",
+          "group": "6_copypath@1"
+        },
+        {
+          "command": "fabricDataFactory.fs.copyRelativePath",
+          "when": "view == fabricDataFactory && viewItem =~ /^fileNode\\./",
+          "group": "6_copypath@2"
+        },
+        {
+          "command": "fabricDataFactory.fs.compareWithGit",
+          "when": "view == fabricDataFactory && viewItem == fileNode.file.git",
+          "group": "3_git@1"
+        },
+        {
+          "command": "fabricDataFactory.fs.revealInExplorer",
+          "when": "view == fabricDataFactory && viewItem =~ /^fileNode\\./",
+          "group": "4_reveal@1"
+        },
+        {
+          "command": "fabricDataFactory.fs.revealInOS",
+          "when": "view == fabricDataFactory && viewItem =~ /^fileNode\\./",
+          "group": "4_reveal@2"
+        },
+        {
+          "command": "fabricDataFactory.fs.openInTerminal",
+          "when": "view == fabricDataFactory && viewItem =~ /^fileNode\\./",
+          "group": "4_reveal@3"
+        },
+        {
+          "command": "fabricDataFactory.fs.rename",
+          "when": "view == fabricDataFactory && viewItem =~ /^fileNode\\./",
+          "group": "7_modification@1"
+        },
+        {
+          "command": "fabricDataFactory.fs.delete",
+          "when": "view == fabricDataFactory && viewItem =~ /^fileNode\\./",
+          "group": "7_modification@2"
+        }
+      ],
+      "notebook/toolbar": [
+        {
+          "command": "fabricDataFactory.restartKernel",
+          "when": "notebookType == 'fabric-notebook'",
+          "group": "navigation/execute"
+        }
+      ]
+    },
+    "jsonValidation": [
+      {
+        "fileMatch": "**/pipeline-content.json",
+        "url": "./schemas/pipeline.schema.json"
+      },
+      {
+        "fileMatch": "**/copyjob-content.json",
+        "url": "./schemas/copyjob.schema.json"
+      },
+      {
+        "fileMatch": "**/queryMetadata.json",
+        "url": "./schemas/dataflow-queryMetadata.schema.json"
+      }
+    ],
+    "configuration": {
+      "title": "Fabric Data Factory",
+      "properties": {
+        "fabricDataFactory.projectFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Local folder for syncing Fabric item definitions. Defaults to the first workspace folder."
+        },
+        "fabricDataFactory.vmTimeout": {
+          "type": "number",
+          "default": 120000,
+          "minimum": 1000,
+          "maximum": 7200000,
+          "description": "Notebook cell execution timeout in milliseconds. UI cells should stay snappy; for long-running @di chat scripts (e.g. awaiting Airflow DAGs), use 'fabricDataFactory.chatScriptTimeout' instead."
+        },
+        "fabricDataFactory.chatScriptTimeout": {
+          "type": "number",
+          "default": 600000,
+          "minimum": 1000,
+          "maximum": 7200000,
+          "description": "@di chat script execution timeout in milliseconds (default 10 min). Independent from 'vmTimeout' because chat scripts routinely await multi-minute Airflow DAG runs."
+        },
+        "fabricDataFactory.modelIdleTimeout": {
+          "type": "number",
+          "default": 60000,
+          "minimum": 5000,
+          "maximum": 600000,
+          "description": "Maximum time the @di agent waits with NO activity from the language model before ending the step, in milliseconds (default 1 min). This is an idle budget, not a total one: the deadline resets on every chunk the model streams, so a long answer is never cut short — only silence is."
+        },
+        "fabricDataFactory.maxToolRounds": {
+          "type": "number",
+          "default": 500,
+          "minimum": 1,
+          "maximum": 100000,
+          "description": "Maximum number of tool-call rounds the @di agent can perform per chat turn."
+        },
+        "fabricDataFactory.preferredModel": {
+          "type": "string",
+          "default": "claude-opus-4.8",
+          "description": "Preferred Copilot LLM model for script generation.",
+          "enum": [
+            "claude-opus-4.8",
+            "claude-opus-4.7",
+            "claude-opus-4.6",
+            "claude-sonnet-4",
+            "gpt-5.5",
+            "gpt-5.4",
+            "gpt-5.3-codex",
+            "gpt-5.2",
+            "gpt-5.1",
+            "gpt-4o",
+            "gpt-4o-mini",
+            "o3-mini",
+            "o4-mini",
+            "gemini-3.1-pro",
+            "gemini-2.5-pro"
+          ]
+        },
+        "fabricDataFactory.chatDeveloperMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show verbose @di chat output (script bodies dumped inline, status icons, View/Edit buttons per step). Useful when developing the chat participant itself. Off by default — uses a compact, Copilot-style presentation."
+        },
+        "fabricDataFactory.gitIntegration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Fabric git integration in the Workspaces view (branch badges, per-item change decorations, Commit to Git, Git Pull, Compare with Git). Turn this off to skip all git connection/status calls and hide the git commands — useful when the Fabric git APIs are misbehaving."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run copy-assets && npm run build",
+    "typecheck": "tsc --noEmit",
+    "build": "node esbuild.mjs --production",
+    "watch": "node esbuild.mjs --watch",
+    "watch:typecheck": "tsc --noEmit --watch",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test",
+    "copy-assets": "node scripts/copy-assets.mjs",
+    "package": "node scripts/package-vsix.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.116.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^3.0.0",
+    "data-integration": "0.1.0",
+    "esbuild": "^0.28.0",
+    "eslint": "^8.56.0",
+    "mocha": "^11.0.0",
+    "typescript": "^5.3.0"
+  },
+  "overrides": {
+    "diff": "^8.0.3",
+    "serialize-javascript": "^7.0.5",
+    "uuid": "^14.0.0"
+  }
+}

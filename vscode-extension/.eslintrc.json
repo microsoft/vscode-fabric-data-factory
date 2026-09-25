@@ -1,0 +1,44 @@
+{
+  "root": true,
+  "env": {
+    "node": true,
+    "es2022": true
+  },
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module"
+  },
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "rules": {
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/member-ordering": ["warn", {
+      "default": [
+        "public-static-field",
+        "public-instance-field",
+        "public-decorated-field",
+        "protected-static-field",
+        "protected-instance-field",
+        "private-static-field",
+        "private-instance-field",
+        "private-decorated-field",
+        "constructor",
+        "public-static-method",
+        "public-instance-method",
+        "public-decorated-method",
+        "protected-static-method",
+        "protected-instance-method",
+        "private-static-method",
+        "private-instance-method",
+        "private-decorated-method"
+      ]
+    }]
+  },
+  "ignorePatterns": ["out", "dist", "**/*.js"]
+}

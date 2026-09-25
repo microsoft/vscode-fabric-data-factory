@@ -1,0 +1,526 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Fabric Data Pipeline Definition",
+  "description": "Schema for pipeline-content.json files used by Microsoft Fabric Data Pipelines.",
+  "type": "object",
+  "required": ["properties"],
+  "properties": {
+    "properties": {
+      "type": "object",
+      "required": ["activities"],
+      "properties": {
+        "activities": {
+          "type": "array",
+          "description": "List of activities in the pipeline.",
+          "items": { "$ref": "#/definitions/Activity" }
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Pipeline parameters.",
+          "additionalProperties": { "$ref": "#/definitions/ParameterSpecification" }
+        },
+        "variables": {
+          "type": "object",
+          "description": "Pipeline variables.",
+          "additionalProperties": { "$ref": "#/definitions/VariableSpecification" }
+        },
+        "annotations": {
+          "type": "array",
+          "description": "Tags for describing the pipeline.",
+          "items": {}
+        },
+        "description": {
+          "type": "string",
+          "description": "Pipeline description."
+        },
+        "concurrency": {
+          "type": "integer",
+          "description": "Max number of concurrent runs for the pipeline.",
+          "minimum": 1
+        },
+        "folder": {
+          "type": "object",
+          "description": "Folder that contains this pipeline.",
+          "properties": {
+            "name": { "type": "string", "description": "Folder name." }
+          }
+        },
+        "policy": { "$ref": "#/definitions/PipelinePolicy" },
+        "runDimensions": {
+          "type": "object",
+          "description": "Dimensions emitted by the pipeline.",
+          "additionalProperties": {}
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Activity": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string", "description": "Activity name." },
+        "type": {
+          "type": "string",
+          "description": "Activity type discriminator.",
+          "enum": [
+            "Copy",
+            "Lookup",
+            "GetMetadata",
+            "Delete",
+            "WebActivity",
+            "Script",
+            "TridentNotebook",
+            "FabricSparkJobDefinition",
+            "InvokeCopyJob",
+            "RefreshSqlEndpoint",
+            "RefreshMaterializedLakeView",
+            "InvokeDataBuildToolJob",
+            "IfCondition",
+            "Switch",
+            "ForEach",
+            "Until",
+            "Wait",
+            "SetVariable",
+            "AppendVariable",
+            "Filter",
+            "Fail",
+            "ExecutePipeline",
+            "SparkJob",
+            "DataflowJob",
+            "KQLActivity",
+            "FabricMLModelActivity",
+            "FabricAISkillActivity",
+            "InvokeFunction"
+          ]
+        },
+        "description": { "type": "string", "description": "Activity description." },
+        "state": {
+          "type": "string",
+          "description": "Activity state.",
+          "enum": ["Active", "Inactive"],
+          "default": "Active"
+        },
+        "onInactiveMarkAs": {
+          "type": "string",
+          "description": "Status result when activity is inactive.",
+          "enum": ["Succeeded", "Failed", "Skipped"],
+          "default": "Succeeded"
+        },
+        "dependsOn": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ActivityDependency" }
+        },
+        "userProperties": {
+          "type": "array",
+          "description": "User-defined properties.",
+          "items": { "$ref": "#/definitions/UserProperty" }
+        },
+        "policy": { "$ref": "#/definitions/ActivityPolicy" },
+        "typeProperties": { "$ref": "#/definitions/ActivityTypeProperties" },
+        "inputs": {
+          "type": "array",
+          "description": "Activity inputs (Copy activity).",
+          "items": { "$ref": "#/definitions/DatasetReference" }
+        },
+        "outputs": {
+          "type": "array",
+          "description": "Activity outputs (Copy activity).",
+          "items": { "$ref": "#/definitions/DatasetReference" }
+        },
+        "externalReferences": {
+          "type": "object",
+          "description": "External references (connections, pipelines, etc.).",
+          "additionalProperties": {}
+        }
+      }
+    },
+    "ActivityTypeProperties": {
+      "type": "object",
+      "description": "Type-specific properties for the activity. Structure varies by activity type.",
+      "properties": {
+        "source": {
+          "type": "object",
+          "description": "Copy/Lookup source configuration.",
+          "additionalProperties": true
+        },
+        "sink": {
+          "type": "object",
+          "description": "Copy activity sink/destination.",
+          "additionalProperties": true
+        },
+        "destination": {
+          "type": "object",
+          "description": "Copy activity destination (alias for sink).",
+          "additionalProperties": true
+        },
+        "translator": {
+          "type": "object",
+          "description": "Copy activity column mapping / translator."
+        },
+        "enableStaging": {
+          "description": "Whether to copy data via interim staging."
+        },
+        "stagingSettings": {
+          "type": "object",
+          "description": "Interim staging settings when enableStaging is true.",
+          "properties": {
+            "linkedServiceName": { "type": "object" },
+            "path": {}
+          }
+        },
+        "parallelCopies": {
+          "description": "Maximum number of concurrent sessions."
+        },
+        "dataIntegrationUnits": {
+          "description": "Maximum data integration units."
+        },
+        "enableSkipIncompatibleRow": {
+          "description": "Whether to skip incompatible rows."
+        },
+        "validateDataConsistency": {
+          "description": "Whether to validate data consistency."
+        },
+        "logSettings": {
+          "type": "object",
+          "description": "Log settings for copy activity."
+        },
+        "expression": { "$ref": "#/definitions/Expression" },
+        "ifTrueActivities": {
+          "type": "array",
+          "description": "Activities when IfCondition is true.",
+          "items": { "$ref": "#/definitions/Activity" }
+        },
+        "ifFalseActivities": {
+          "type": "array",
+          "description": "Activities when IfCondition is false.",
+          "items": { "$ref": "#/definitions/Activity" }
+        },
+        "on": { "$ref": "#/definitions/Expression" },
+        "cases": {
+          "type": "array",
+          "description": "Switch cases.",
+          "items": { "$ref": "#/definitions/SwitchCase" }
+        },
+        "defaultActivities": {
+          "type": "array",
+          "description": "Default activities if no switch case is matched.",
+          "items": { "$ref": "#/definitions/Activity" }
+        },
+        "isSequential": {
+          "type": "boolean",
+          "description": "ForEach: whether to execute items sequentially."
+        },
+        "batchCount": {
+          "type": "integer",
+          "description": "ForEach: batch count for parallel execution.",
+          "maximum": 50
+        },
+        "items": { "$ref": "#/definitions/Expression" },
+        "activities": {
+          "type": "array",
+          "description": "Nested activities (ForEach, Until).",
+          "items": { "$ref": "#/definitions/Activity" }
+        },
+        "timeout": {
+          "description": "Timeout. Pattern: ((\\d+)\\.)?(\\d\\d):(60|([0-5][0-9])):(60|([0-5][0-9]))"
+        },
+        "waitTimeInSeconds": {
+          "description": "Wait duration in seconds."
+        },
+        "variableName": {
+          "type": "string",
+          "description": "Variable name (SetVariable / AppendVariable)."
+        },
+        "value": {
+          "description": "Value to set or append."
+        },
+        "setSystemVariable": {
+          "type": "boolean",
+          "description": "SetVariable: if true, sets the pipeline run return value."
+        },
+        "condition": { "$ref": "#/definitions/Expression" },
+        "message": {
+          "description": "Fail activity error message."
+        },
+        "errorCode": {
+          "description": "Fail activity error code."
+        },
+        "pipeline": {
+          "type": "object",
+          "description": "ExecutePipeline: pipeline reference.",
+          "properties": {
+            "pipelineId": { "type": "string" },
+            "pipelineName": { "type": "string" },
+            "referenceName": { "type": "string" },
+            "type": { "type": "string" }
+          }
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Parameters to pass (ExecutePipeline, TridentNotebook).",
+          "additionalProperties": {}
+        },
+        "waitOnCompletion": {
+          "type": "boolean",
+          "description": "ExecutePipeline: whether to wait for completion."
+        },
+        "workspaceId": {
+          "description": "Fabric workspace ID."
+        },
+        "pipelineId": {
+          "description": "Pipeline ID."
+        },
+        "method": {
+          "type": "string",
+          "description": "WebActivity: HTTP method.",
+          "enum": ["GET", "POST", "PUT", "DELETE"]
+        },
+        "relativeUrl": {
+          "description": "WebActivity: relative URL path."
+        },
+        "headers": {
+          "type": "object",
+          "description": "WebActivity: request headers."
+        },
+        "body": {
+          "description": "WebActivity: request body."
+        },
+        "disableCertValidation": {
+          "description": "WebActivity: disable certificate validation."
+        },
+        "httpRequestTimeout": {
+          "description": "WebActivity: HTTP timeout (hh:mm:ss)."
+        },
+        "datasetSettings": {
+          "type": "object",
+          "description": "Dataset settings (Lookup, GetMetadata, Delete).",
+          "additionalProperties": true
+        },
+        "firstRowOnly": {
+          "description": "Lookup: return only the first row."
+        },
+        "fieldList": {
+          "type": "array",
+          "description": "GetMetadata: fields to retrieve.",
+          "items": {}
+        },
+        "recursive": {
+          "description": "Delete: whether to delete recursively."
+        },
+        "storeSettings": {
+          "type": "object",
+          "description": "Store settings (Delete, GetMetadata).",
+          "additionalProperties": true
+        },
+        "database": {
+          "description": "Script activity: database name."
+        },
+        "scripts": {
+          "type": "array",
+          "description": "Script activity: script blocks.",
+          "items": { "$ref": "#/definitions/ScriptBlock" }
+        },
+        "notebookId": {
+          "description": "TridentNotebook: notebook item ID."
+        },
+        "sparkJobDefinitionId": {
+          "description": "FabricSparkJobDefinition: Spark Job Definition ID."
+        },
+        "copyJobId": {
+          "description": "InvokeCopyJob: copy job item ID."
+        },
+        "dataBuildToolJobId": {
+          "description": "InvokeDataBuildToolJob: dbt job item ID."
+        },
+        "select": {
+          "description": "InvokeDataBuildToolJob: dbt select expression."
+        },
+        "exclude": {
+          "description": "InvokeDataBuildToolJob: dbt exclude expression."
+        },
+        "fullRefresh": {
+          "type": "boolean",
+          "description": "InvokeDataBuildToolJob: run full refresh."
+        },
+        "driverMemory": {
+          "description": "Spark driver memory."
+        },
+        "driverCores": {
+          "description": "Spark driver core count."
+        },
+        "executorMemory": {
+          "description": "Spark executor memory."
+        },
+        "executorCores": {
+          "description": "Spark executor core count."
+        },
+        "numExecutors": {
+          "description": "Spark number of executors."
+        },
+        "sqlEndpointId": {
+          "description": "RefreshSqlEndpoint: SQL endpoint ID."
+        },
+        "lakehouseId": {
+          "description": "RefreshMaterializedLakeView: lakehouse ID."
+        }
+      },
+      "additionalProperties": true
+    },
+    "ActivityDependency": {
+      "type": "object",
+      "required": ["activity", "dependencyConditions"],
+      "properties": {
+        "activity": { "type": "string", "description": "Activity name." },
+        "dependencyConditions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["Succeeded", "Failed", "Skipped", "Completed"]
+          }
+        }
+      }
+    },
+    "ActivityPolicy": {
+      "type": "object",
+      "description": "Execution policy for an activity.",
+      "properties": {
+        "timeout": {
+          "type": "string",
+          "description": "Timeout. Default: 7 days. Pattern: ((\\d+)\\.)?(\\d\\d):(60|([0-5][0-9])):(60|([0-5][0-9]))"
+        },
+        "retry": {
+          "type": "integer",
+          "description": "Max retry attempts.",
+          "minimum": 0
+        },
+        "retryIntervalInSeconds": {
+          "type": "integer",
+          "description": "Interval between retries in seconds.",
+          "minimum": 30,
+          "maximum": 86400,
+          "default": 30
+        },
+        "secureInput": {
+          "type": "boolean",
+          "description": "When true, input is considered secure and will not be logged."
+        },
+        "secureOutput": {
+          "type": "boolean",
+          "description": "When true, output is considered secure and will not be logged."
+        }
+      }
+    },
+    "PipelinePolicy": {
+      "type": "object",
+      "description": "Pipeline-level policy.",
+      "properties": {
+        "elapsedTimeMetric": {
+          "type": "object",
+          "description": "Elapsed time metric policy.",
+          "properties": {
+            "duration": { "type": "string", "description": "TimeSpan duration." }
+          }
+        },
+        "cancelAfter": {
+          "type": "object",
+          "description": "Cancel-after policy.",
+          "properties": {
+            "duration": { "type": "string", "description": "TimeSpan duration." }
+          }
+        }
+      }
+    },
+    "Expression": {
+      "type": "object",
+      "description": "Pipeline expression.",
+      "required": ["value", "type"],
+      "properties": {
+        "value": { "type": "string", "description": "Expression string." },
+        "type": { "type": "string", "enum": ["Expression"], "description": "Must be 'Expression'." }
+      }
+    },
+    "SwitchCase": {
+      "type": "object",
+      "description": "A case within a Switch activity.",
+      "properties": {
+        "value": { "type": "string", "description": "Expected value that satisfies the 'on' expression." },
+        "activities": {
+          "type": "array",
+          "description": "Activities for this case.",
+          "items": { "$ref": "#/definitions/Activity" }
+        }
+      }
+    },
+    "ScriptBlock": {
+      "type": "object",
+      "description": "A script block within a Script activity.",
+      "required": ["text", "type"],
+      "properties": {
+        "text": { "description": "Query text." },
+        "type": {
+          "type": "string",
+          "enum": ["Query", "NonQuery"],
+          "description": "Query type."
+        },
+        "parameters": {
+          "type": "array",
+          "description": "Script parameters.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "description": "Parameter name." },
+              "type": {
+                "type": "string",
+                "enum": ["Boolean", "DateTime", "DateTimeOffset", "Decimal", "Double", "Guid", "Int16", "Int32", "Int64", "Single", "String", "Timespan"]
+              },
+              "value": { "description": "Parameter value." },
+              "direction": { "type": "string", "enum": ["Input", "Output", "InputOutput"] },
+              "size": { "type": "integer", "description": "Output parameter size." }
+            }
+          }
+        }
+      }
+    },
+    "UserProperty": {
+      "type": "object",
+      "description": "User-defined property on an activity.",
+      "required": ["name", "value"],
+      "properties": {
+        "name": { "type": "string" },
+        "value": {}
+      }
+    },
+    "DatasetReference": {
+      "type": "object",
+      "description": "Dataset reference for activity inputs/outputs.",
+      "properties": {
+        "referenceName": { "type": "string" },
+        "type": { "type": "string" },
+        "parameters": { "type": "object", "additionalProperties": {} }
+      }
+    },
+    "ParameterSpecification": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["String", "Int", "Float", "Bool", "Array", "Object", "SecureString"]
+        },
+        "defaultValue": {}
+      }
+    },
+    "VariableSpecification": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["String", "Bool", "Array"]
+        },
+        "defaultValue": {}
+      }
+    }
+  }
+}

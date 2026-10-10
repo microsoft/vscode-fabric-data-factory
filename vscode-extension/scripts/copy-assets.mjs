@@ -17,6 +17,7 @@ const assets = join(extRoot, "assets");
 const target = process.env.FABRIC_DATA_FACTORY_TARGET || `${process.platform}-${process.arch}`;
 const addonCandidates = [
   "di-addon.win32-x64-msvc.node",
+  "di-addon.win32-arm64-msvc.node",
   "di-addon.linux-x64-gnu.node",
   "di-addon.linux-arm64-gnu.node",
   "di-addon.darwin-x64.node",

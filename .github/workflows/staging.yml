@@ -3,15 +3,28 @@ run-name: "Extension staging build #${{ github.run_number }}"
 
 on:
   workflow_dispatch:
+    inputs:
+      sdk_release_tag:
+        description: Release tag containing the SDK tarball (draft or published)
+        required: true
+        default: untagged-a1949a4e16fb0de81984
+        type: string
+      sdk_version:
+        description: SDK version to install from data-integration-<version>.tgz
+        required: true
+        default: '0.1.0'
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   package:
-    name: Package Windows, Linux, and macOS x64
+    name: Package Windows, Linux, and macOS x64 and ARM64
     runs-on: windows-2022
     timeout-minutes: 30
+    permissions:
+      contents: write
     defaults:
       run:
         shell: pwsh
@@ -24,6 +37,19 @@ jobs:
 
       - name: Set up extension
         uses: ./.github/actions/setup-extension
+
+      - name: Install SDK from release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SDK_RELEASE_TAG: ${{ inputs.sdk_release_tag }}
+          SDK_VERSION: ${{ inputs.sdk_version }}
+        run: |
+          $assetName = "data-integration-$env:SDK_VERSION.tgz"
+          $tarball = Join-Path $env:RUNNER_TEMP $assetName
+          gh release download "$env:SDK_RELEASE_TAG" --repo "$env:GITHUB_REPOSITORY" --pattern $assetName --output $tarball
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm install $tarball --no-save --package-lock=false --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Stamp staging version
         id: version
@@ -39,8 +65,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "version=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Package supported x64 targets
-        run: npm run package -- win32-x64 linux-x64 darwin-x64
+      - name: Package supported x64 and ARM64 targets
+        run: npm run package -- win32-x64 win32-arm64 linux-x64 linux-arm64 darwin-x64 darwin-arm64
 
       - name: Name staging artifacts
         env:
@@ -76,6 +102,33 @@ jobs:
         with:
           name: fabric-data-factory-darwin-x64-${{ steps.version.outputs.version }}
           path: vscode-extension/vsix/fabric-data-factory-darwin-x64-${{ steps.version.outputs.version }}.vsix
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload Windows ARM64 VSIX
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fabric-data-factory-win32-arm64-${{ steps.version.outputs.version }}
+          path: vscode-extension/vsix/fabric-data-factory-win32-arm64-${{ steps.version.outputs.version }}.vsix
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload Linux ARM64 VSIX
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fabric-data-factory-linux-arm64-${{ steps.version.outputs.version }}
+          path: vscode-extension/vsix/fabric-data-factory-linux-arm64-${{ steps.version.outputs.version }}.vsix
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Upload macOS ARM64 VSIX
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fabric-data-factory-darwin-arm64-${{ steps.version.outputs.version }}
+          path: vscode-extension/vsix/fabric-data-factory-darwin-arm64-${{ steps.version.outputs.version }}.vsix
           if-no-files-found: error
           retention-days: 30
           compression-level: 0

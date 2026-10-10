@@ -31,6 +31,7 @@ const outDir = join(extRoot, "vsix");
  */
 const PLATFORMS = {
   "win32-x64":    "di-addon.win32-x64-msvc.node",
+  "win32-arm64":  "di-addon.win32-arm64-msvc.node",
   "linux-x64":    "di-addon.linux-x64-gnu.node",
   "linux-arm64":  "di-addon.linux-arm64-gnu.node",
   "darwin-x64":   "di-addon.darwin-x64.node",
